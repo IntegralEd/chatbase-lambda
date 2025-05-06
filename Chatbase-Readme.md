@@ -222,3 +222,26 @@ Use AWS Secrets Manager for API keys in production
 
 Add custom request auth headers if this API will be publicly exposed
 
+# 🚧 Deployment Status & Current Blockers
+
+**Last updated:** $(date)
+
+## What is Working
+- AWS Lambda function is deployed and accessible via API Gateway.
+- Lambda is configured with environment variables for Chatbase, Redis, and Airtable.
+- Redis (ElastiCache) cluster is provisioned and available.
+- NAT Gateway is set up and private subnet route table points to it for internet access.
+- Lambda can be invoked via API Gateway and receives requests.
+
+## Current Blockers
+- Lambda **cannot connect to Redis**: `connect ETIMEDOUT` error in CloudWatch logs.
+  - Likely cause: Redis security group does not allow inbound 6379 from Lambda's security group, or subnet association/routing issue.
+- Lambda **cannot reach Chatbase API**: `connect ETIMEDOUT` error in logs.
+  - Indicates Lambda may still not have outbound internet access, or NAT Gateway/subnet association is not fully correct.
+
+## Next Steps
+- Double-check Redis security group inbound rules (allow 6379 from Lambda SG).
+- Confirm Lambda and Redis are in the same VPC and routable subnets.
+- Verify Lambda's subnets are associated with the route table pointing to the NAT Gateway.
+- Test Lambda again after making these changes.
+

@@ -1,0 +1,9 @@
+version = 0.1
+[default.deploy.parameters]
+stack_name = "chatbase-lambda-05062025"
+resolve_s3 = true
+s3_prefix = "chatbase-lambda-05062025"
+region = "us-east-2"
+capabilities = "CAPABILITY_IAM"
+image_repositories = []
+disable_rollback = true

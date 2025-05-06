@@ -33,16 +33,18 @@ Resources:
             RestApiId: !Ref ChatbaseApi
       Environment:
         Variables:
-          CHATBASE_API_KEY: your-chatbase-api-key
-          REDIS_URL: !Sub "redis://${RedisCluster.Endpoint.Address}:${RedisCluster.Endpoint.Port}"
-          AIRTABLE_API_KEY: your-airtable-api-key
-          AIRTABLE_BASE_ID: your-airtable-base-id
-          AIRTABLE_TABLE_NAME: your-airtable-table-name
+          CHATBASE_API_KEY: 224e2b45-0f03-4358-bed1-0fd8f964ae1a
+          REDIS_URL: !Sub "redis://${RedisCluster.RedisEndpoint.Address}:${RedisCluster.RedisEndpoint.Port}"
+          AIRTABLE_API_KEY: patiB6cF2Xrttypu7.851d46c9e1c82a601b90733c0f21fe13bba2606552d7587faad15aaebd1d2c82
+          AIRTABLE_BASE_ID: appqFjYLZiRlgZQDM
+          AIRTABLE_TABLE_NAME: Chatbase_Messages
       VpcConfig:
         SecurityGroupIds:
-          - sg-xxxxxxxx      # Update to match your actual security group
+          - sg-09fd26a9810b22628
         SubnetIds:
-          - subnet-xxxxxxx   # Must be private subnet if Redis is inside VPC
+          - subnet-0588b74fc8b1585f9
+          - subnet-05d321f42e41149d3
+          - subnet-020aac4490f925b34
 
   RedisCluster:
     Type: AWS::ElastiCache::CacheCluster
@@ -52,7 +54,7 @@ Resources:
       NumCacheNodes: 1
       EngineVersion: "6.x"
       VpcSecurityGroupIds:
-        - sg-xxxxxxxx        # Must allow inbound from Lambda
+        - sg-09fd26a9810b22628
       CacheSubnetGroupName: !Ref RedisSubnetGroup
 
   RedisSubnetGroup:
@@ -60,7 +62,9 @@ Resources:
     Properties:
       Description: "Subnet group for Redis"
       SubnetIds:
-        - subnet-xxxxxxx     # Must be private subnets
+        - subnet-0588b74fc8b1585f9
+        - subnet-05d321f42e41149d3
+        - subnet-020aac4490f925b34
 
 Outputs:
   ApiUrl:

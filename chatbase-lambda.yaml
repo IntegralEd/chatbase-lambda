@@ -1,32 +1,13 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Chatbase Proxy with Redis Cache and Airtable Logging
+Description: Chatbase Proxy with Redis and Airtable Logging
 
 Globals:
   Function:
     Timeout: 10
     Runtime: nodejs18.x
-    Environment:
-      Variables:
-        CHATBASE_API_KEY: your-chatbase-api-key
-        REDIS_URL: your-redis-connection-url
-        AIRTABLE_API_KEY: your-airtable-api-key
-        AIRTABLE_BASE_ID: your-airtable-base-id
-        AIRTABLE_TABLE_NAME: your-airtable-table-name
 
 Resources:
-  ChatbaseProxyFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: .
-      Handler: handler.handler
-      Events:
-        ProxyAPI:
-          Type: Api
-          Properties:
-            Path: /chatbase/proxy
-            Method: POST
-            RestApiId: !Ref ChatbaseApi
 
   ChatbaseApi:
     Type: AWS::Serverless::Api
@@ -37,6 +18,49 @@ Resources:
         AllowMethods: "'POST,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Tenant-Id'"
         AllowOrigin: "'*'"
+
+  ChatbaseProxyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda
+      Handler: handler.handler
+      Events:
+        ProxyAPI:
+          Type: Api
+          Properties:
+            Path: /chatbase/proxy
+            Method: POST
+            RestApiId: !Ref ChatbaseApi
+      Environment:
+        Variables:
+          CHATBASE_API_KEY: your-chatbase-api-key
+          REDIS_URL: !Sub "redis://${RedisCluster.Endpoint.Address}:${RedisCluster.Endpoint.Port}"
+          AIRTABLE_API_KEY: your-airtable-api-key
+          AIRTABLE_BASE_ID: your-airtable-base-id
+          AIRTABLE_TABLE_NAME: your-airtable-table-name
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-xxxxxxxx      # Update to match your actual security group
+        SubnetIds:
+          - subnet-xxxxxxx   # Must be private subnet if Redis is inside VPC
+
+  RedisCluster:
+    Type: AWS::ElastiCache::CacheCluster
+    Properties:
+      Engine: redis
+      CacheNodeType: cache.t3.micro
+      NumCacheNodes: 1
+      EngineVersion: "6.x"
+      VpcSecurityGroupIds:
+        - sg-xxxxxxxx        # Must allow inbound from Lambda
+      CacheSubnetGroupName: !Ref RedisSubnetGroup
+
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: "Subnet group for Redis"
+      SubnetIds:
+        - subnet-xxxxxxx     # Must be private subnets
 
 Outputs:
   ApiUrl:

@@ -12,11 +12,34 @@ const LOG_THRESHOLD = 3; // Write to Airtable after this many message pairs
 
 exports.handler = async (event) => {
   try {
-    const { assistant_id, message, chat_session_id, tenant_id, flush } = JSON.parse(event.body || '{}');
+    const {
+      chatbotId, // allow override, but default to env
+      messages,
+      conversationId,
+      stream = false,
+      temperature = 0,
+      model,
+      tenant_id,
+      flush
+    } = JSON.parse(event.body || '{}');
 
-    if (!assistant_id || !message || !chat_session_id) {
+    const resolvedChatbotId = chatbotId || process.env.GOALSETTER_ASSISTANT_ID;
+
+    if (!resolvedChatbotId || !messages || !Array.isArray(messages) || messages.length === 0) {
       return { statusCode: 400, body: JSON.stringify({ error: "Missing required fields" }) };
     }
+
+    // Build Chatbase API payload
+    const chatbasePayload = {
+      chatbotId: resolvedChatbotId,
+      messages,
+      stream,
+      temperature,
+    };
+    if (model) chatbasePayload.model = model;
+    if (conversationId) chatbasePayload.conversationId = conversationId;
+
+    console.log('Using Chatbase API key:', CHATBASE_API_KEY ? 'set' : 'NOT SET');
 
     // Call Chatbase
     const chatbaseRes = await fetch("https://www.chatbase.co/api/v1/chat", {
@@ -25,18 +48,18 @@ exports.handler = async (event) => {
         "Authorization": `Bearer ${CHATBASE_API_KEY}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ assistant_id, message, chat_session_id, stream: false })
+      body: JSON.stringify(chatbasePayload)
     });
     const response = await chatbaseRes.json();
     const bot_response = response.text || JSON.stringify(response);
 
-    // Cache message pair in Redis
+    // Cache message pair in Redis (optional: you may want to cache the whole messages array)
     const logItem = JSON.stringify({
-      user: message,
+      user: messages[messages.length - 1].content,
       bot: bot_response,
       timestamp: new Date().toISOString()
     });
-    const redisKey = `chatlog:${chat_session_id}`;
+    const redisKey = `chatlog:${conversationId}`;
     await redis.rpush(redisKey, logItem);
 
     // Check if we should flush
@@ -50,8 +73,8 @@ exports.handler = async (event) => {
           const parsed = JSON.parse(entry);
           return {
             fields: {
-              Chat_Session_ID: chat_session_id,
-              Assistant_ID: assistant_id,
+              Chat_Session_ID: conversationId,
+              Assistant_ID: resolvedChatbotId,
               User_Message: parsed.user,
               Assistant_Response: parsed.bot,
               Tenant_ID: tenant_id || "unknown",
